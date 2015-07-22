@@ -1,0 +1,3 @@
+[submodule "ArduinoLED"]
+	path = ArduinoLED
+	url = https://github.com/mattmunee/ArduinoLED.git
