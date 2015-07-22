@@ -1,3 +1,6 @@
 [submodule "ArduinoLED"]
 	path = ArduinoLED
 	url = https://github.com/mattmunee/ArduinoLED.git
+[submodule "IntrusionDetectionNode"]
+	path = IntrusionDetectionNode
+	url = https://github.com/mattmunee/IntrusionDetectionNode.git
