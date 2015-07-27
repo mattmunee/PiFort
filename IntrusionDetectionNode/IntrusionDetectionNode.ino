@@ -1,3 +1,4 @@
+#include <PiFortDataTypes.h>
 #include <ArduinoLED.h>
 #include <SPI.h>
 #include <Wire.h>
@@ -15,26 +16,19 @@
 #define DEBUGln(input);
 #endif
 
-#define LED  9            // LED is D9 on Motetino
+#define LED				9            // LED is D9 on Motetino
 
 RFM69 radio;       
 
-#define NODEID        18    //unique for each node on same network
-#define NETWORKID     100  //the same on all nodes that talk to each other
-#define GATEWAYID     1
-#define FREQUENCY     RF69_915MHZ
-#define ENCRYPTKEY    "sampleEncryptKey" //exactly the same 16 characters/bytes on all nodes!
-
-#define NUMMEAS		10
-
-typedef struct{
-	byte nodeID;
-	byte numMeas;
-	float accelMag2[NUMMEAS];
-}Payload;
-Payload payLoad;
+#define NODEID			18    //unique for each node on same network
+#define NETWORKID		100  //the same on all nodes that talk to each other
+#define GATEWAYID		1
+#define FREQUENCY		RF69_915MHZ
+#define ENCRYPTKEY		"sampleEncryptKey" //exactly the same 16 characters/bytes on all nodes!
+#define NUM_MEAS_TX		10
 
 MMA8452Q accelerometer;
+Payload payload(NUM_MEAS_TX);
 
 ArduinoLED led(LED);
 
@@ -44,8 +38,9 @@ bool sleepInterruptCaught = false;
 
 void setup()
 {
-	payLoad.nodeID = NODEID;
-	payLoad.numMeas = NUMMEAS;
+	payload.nodeID = NODEID;
+	payload.nodeType = PF_INTRUSION_NODE;
+	payload.numMeas = NUM_MEAS_TX;
 	Serial.begin(SERIAL_BAUD);
 	DEBUGln("Start...");
 	
@@ -82,24 +77,31 @@ void loop()
 		DEBUGln(accelerometer.getInterruptSources());
 		if (motionInterruptCaught)DEBUGln("Motion");
 		if (sleepInterruptCaught)DEBUGln("Sleep");
-		byte numMeasurements = 0;
-		while (numMeasurements < NUMMEAS){
+		byte measNum = 0;
+		while (measNum < NUM_MEAS_TX){
 			if (accelerometer.available()){
 				accelerometer.read();
-				payLoad.accelMag2[numMeasurements] = accelerometer.cx*accelerometer.cx
+				payload.data[measNum] = accelerometer.cx*accelerometer.cx
 					+ accelerometer.cy*accelerometer.cy
 					+ accelerometer.cz*accelerometer.cz;
-				numMeasurements++;
+				measNum++;
 			}
 		}
-		for (byte i = 0; i < NUMMEAS; i++){
-			DEBUG(payLoad.accelMag2[i]);
+		for (byte i = 0; i < NUM_MEAS_TX; i++){
+			DEBUG(payload.data[i]);
 			DEBUG(" ");
 		}
 		DEBUGln("");
 		DEBUGln("");
-
-		if (radio.sendWithRetry(GATEWAYID, (const void*)(&payLoad), sizeof(payLoad))){
+		DEBUG("Size Of Payload: ");
+		DEBUGln(sizeof(Payload));
+		DEBUG("Size Of float: ");
+		DEBUGln(sizeof(float*));
+		DEBUG("Size Of PiFortNodeType: ");
+		DEBUGln(sizeof(PiFortNodeType));
+		DEBUG("Size Of Payload: ");
+		DEBUGln(payload.payloadSize);
+		if (radio.sendWithRetry(GATEWAYID, (const void*)(&payload), payload.payloadSize)){
 			DEBUGln("ACK:OK");
 		}
 		else{

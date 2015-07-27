@@ -4,6 +4,7 @@
 // Library and code by Felix Rusu - felix@lowpowerlab.com
 // Get the RFM69 and SPIFlash library at: https://github.com/LowPowerLab/
 
+#include <PiFortDataTypes.h>
 #include <EEPROM.h>
 #include <ApplicationMonitor.h>
 #include <RFM69.h>    //get it here: https://www.github.com/lowpowerlab/rfm69
@@ -40,13 +41,8 @@
 
 unsigned long prevLoopTime=0;
 
-typedef struct{
-	byte nodeID;
-	byte numMeas;
-	float accelMag2[MAXNUMMEAS];
-}Payload;
-Payload payLoad;
-char payLoadChar[sizeof(Payload)];
+Payload payload(MAXNUMMEAS);
+char payLoadChar[sizeof(payload)];
 
 RFM69 radio;
 bool promiscuousMode = false; //set to 'true' to sniff all packets on the same network
@@ -113,13 +109,13 @@ void loop() {
 		Serial.print(F("   Data Length: "));
 		Serial.print(radio.DATALEN);
     	
-		payLoad=*(Payload*)radio.DATA;
-		memcpy(&payLoadChar, &payLoad, sizeof(Payload));
-		payLoad = *(Payload*)&payLoadChar;
+		payload = *(Payload*)radio.DATA;
+		memcpy(&payLoadChar, &payload, sizeof(Payload));
+		payload = *(Payload*)&payLoadChar;
 
 		Serial.println(F("   Data: "));
-		for (byte i = 0; i < payLoad.numMeas; i++){
-			Serial.print(payLoad.accelMag2[i]);
+		for (byte i = 0; i < payload.numMeas; i++){
+			Serial.print(payload.data[i]);
 			Serial.print(" ");
 		}
 		Serial.println("");
@@ -142,12 +138,4 @@ void loop() {
 		DEBUGln();
 	}
 	DEBUGln(F("End loop!"));
-}
-
-void Blink(byte PIN, int DELAY_MS)
-{
-	pinMode(PIN, OUTPUT);
-	digitalWrite(PIN,HIGH);
-	delay(DELAY_MS);
-	digitalWrite(PIN,LOW);
 }
