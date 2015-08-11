@@ -52,9 +52,10 @@ void setup()
 	radio.sleep(); // MOTEINO: sleep right away to save power
 
 	// Setup accelerometer
-	accelerometer.init(SCALE_2G, ODR_50);
-	accelerometer.setupMotionDetection(XY, 0.63, 0, INT_PIN2);
-	accelerometer.setupAutoSleep(ODR_SLEEP_1,LOW_POWER, 0x08, 5.0,INT_PIN1);
+	accelerometer.init(SCALE_2G, ODR_100);
+	accelerometer.setupFreefallOrMotionDetection(MOTION, XY, 0.63, 0, INT_PIN2);
+	accelerometer.setupFreefallOrMotionDetection(FREEFALL, Y, 0.63, 0, INT_PIN2);
+	accelerometer.setupAutoSleep(ODR_SLEEP_12,LOW_POWER, 0x08, 5.0,INT_PIN1);
 	accelerometer.clearFFMotionInterrupt();
 
 	// Setup Interrupts

@@ -27,6 +27,7 @@ public:
 	byte nodeID;						// Unique ID for each node on network
 	PiFortNodeType nodeType;			// Device type
 	byte numMeas;						// Number of data points to send
+	byte currMeas;						// Position in data array of most current meas (used for circular buffer)
 	float data[MAX_PAYLOAD_DATA_SIZE];	// Fixed size data array
 };
 
