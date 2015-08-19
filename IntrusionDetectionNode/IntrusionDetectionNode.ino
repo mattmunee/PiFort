@@ -55,16 +55,17 @@ void setup()
 
 	// Setup accelerometer
 	accelerometer.init(SCALE_2G, ODR_100);
-	//accelerometer.setupFreefallOrMotionDetection(MOTION, XY, 0.63, 0, INT_PIN2);
-	//accelerometer.setupFreefallOrMotionDetection(FREEFALL, Y, 0.63, 0, INT_PIN2);
-	accelerometer.setupPortraitLandscapeDetection(2, INT_PIN2);
-	//accelerometer.setupAutoSleep(ODR_SLEEP_12,LOW_POWER, 0x08, 5.0,INT_PIN2);
+	//accelerometer.setupFreefallOrMotionDetection(MOTION, XY, 0.63, 0, INT_PIN1);
+	//accelerometer.setupFreefallOrMotionDetection(FREEFALL, Y, 0.63, 0, INT_PIN1);
+	accelerometer.setupTransientDetection(false, XY, 0.63, 0, INT_PIN1);
+	accelerometer.setupPortraitLandscapeDetection(2, INT_PIN1);
+	accelerometer.setupAutoSleep(ODR_SLEEP_12,LOW_POWER, 0x0F, 4.0,INT_PIN2);
 	accelerometer.clearAllInterrupts();
 
 	// Setup Interrupts
-	// Use hardware interrupt 1 for motion interrupt (hardware 0 is tied to radio)
+	// Use hardware interrupt 1 for motion interrupts (hardware 0 is tied to radio)
 	pinMode(INT1, INPUT);
-	attachInterrupt(INT1, catchMotionInterrupt, RISING);
+	attachInterrupt(INT1, catchMotionInterrupt, FALLING);
 
 	// Use pin change interrupt to catch sleep/wake interrupt
 	pinMode(PC0, INPUT);
@@ -77,6 +78,12 @@ void setup()
 	DEBUGln(accelerometer.readRegister(PL_CFG));
 	DEBUG(F("PL_COUNT: "));
 	DEBUGln(accelerometer.readRegister(PL_COUNT));
+	DEBUG(F("CTRL_REG1: "));
+	DEBUGln(accelerometer.readRegister(CTRL_REG1));
+	DEBUG(F("CTRL_REG2: "));
+	DEBUGln(accelerometer.readRegister(CTRL_REG2));
+	DEBUG(F("CTRL_REG3: "));
+	DEBUGln(accelerometer.readRegister(CTRL_REG3));
 	DEBUG(F("CTRL_REG4: "));
 	DEBUGln(accelerometer.readRegister(CTRL_REG4));
 	DEBUG(F("CTRL_REG5: "));
@@ -85,7 +92,7 @@ void setup()
 
 void loop()
 {
-	if (motionInterruptCaught | sleepInterruptCaught){
+	if (motionInterruptCaught|sleepInterruptCaught){
 		intSource = accelerometer.getInterruptSources();
 		DEBUGln(F("Interrupt Sources:"));
 		if (intSource & 0x01)DEBUGln(F("SRC_DRDY"));
@@ -95,8 +102,6 @@ void loop()
 		if (intSource & 0x20)DEBUGln(F("SRC_TRANS"));
 		if (intSource & 0x80)DEBUGln(F("SRC_ASLP"));
 
-		if (motionInterruptCaught)DEBUGln(F("Motion"));
-		if (sleepInterruptCaught)DEBUGln(F("Sleep"));
 		byte measNum = 0;
 		while (measNum < NUM_MEAS_TX){
 			if (accelerometer.available()){
@@ -111,18 +116,9 @@ void loop()
 			DEBUG(payload.data[i]);
 			DEBUG(" ");
 		}
-		DEBUGln(F(""));
-		DEBUGln(F(""));
-		DEBUG(F("Size Of Payload: "));
-		DEBUGln(sizeof(Payload));
-		DEBUG(F("Size Of float: "));
-		DEBUGln(sizeof(float*));
-		DEBUG(F("Size Of PiFortNodeType: "));
-		DEBUGln(sizeof(PiFortNodeType));
-		DEBUG(F("Size Of Payload: "));
-		byte payloadSize = payload.payloadSize;
-		DEBUGln(payload.payloadSize);
+		
 		if (radio.sendWithRetry(GATEWAYID, (const void*)(&payload), payload.payloadSize)){
+			delay(10);
 			DEBUGln(F("ACK:OK"));
 		}
 		else{
@@ -142,7 +138,7 @@ void loop()
 }
 
 void catchMotionInterrupt(){
-	motionInterruptCaught=true;
+	motionInterruptCaught = true;
 }
 
 ISR(PCINT1_vect)
