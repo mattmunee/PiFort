@@ -56,8 +56,8 @@ void setup()
 	// Setup accelerometer
 	accelerometer.init(SCALE_2G, ODR_100);
 	//accelerometer.setupFreefallOrMotionDetection(MOTION, XY, 0.63, 0, INT_PIN1);
-	//accelerometer.setupFreefallOrMotionDetection(FREEFALL, Y, 0.63, 0, INT_PIN1);
-	accelerometer.setupTransientDetection(false, XY, 0.63, 0, INT_PIN1);
+	accelerometer.setupFreefallOrMotionDetection(FREEFALL, Y, 0.63, 0, INT_PIN1);
+	accelerometer.setupTransientDetection(false, XYZ, 0.23, 0, INT_PIN1);
 	accelerometer.setupPortraitLandscapeDetection(2, INT_PIN1);
 	accelerometer.setupAutoSleep(ODR_SLEEP_12,LOW_POWER, 0x0F, 4.0,INT_PIN2);
 	accelerometer.clearAllInterrupts();
