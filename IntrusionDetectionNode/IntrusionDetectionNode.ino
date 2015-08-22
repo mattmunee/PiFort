@@ -7,11 +7,11 @@
 #include <LowPower.h>
 #include <EEPROM.h>
 
-#define SERIAL_BAUD      9600
-//#define SERIAL_EN
+#define SERIAL_BAUD      19200
+#define SERIAL_EN
 #ifdef SERIAL_EN
-#define DEBUG(input)   {Serial.print(input); delay(5);}
-#define DEBUGln(input) {Serial.println(input); delay(5);}
+#define DEBUG(input)   {Serial.print(input); delay(15);}
+#define DEBUGln(input) {Serial.println(input); delay(15);}
 #else
 #define DEBUG(input);
 #define DEBUGln(input);
@@ -23,7 +23,7 @@
 #define FREQUENCY		RF69_915MHZ
 #define ENCRYPTKEY		"sampleEncryptKey" //exactly the same 16 characters/bytes on all nodes!
 #define NUM_MEAS_TX		10
-#define RX_PERIOD		5000 //300000 //5 minute intervals
+#define CHECKIN_PERIOD		5000 //300000 //5 minute intervals
 
 RFM69 radio;
 MMA8452Q accelerometer;
@@ -40,6 +40,7 @@ accelData data;
 PiFortEEPROM eeprom;
 signed long prevTime;
 signed long currTime;
+bool isArmed;
 
 void setup()
 {
@@ -87,6 +88,9 @@ void setup()
 	payloadTx.nodeID = eeprom.nodeID;
 	payloadTx.nodeType = PF_INTRUSION_NODE;
 	payloadTx.numMeas = NUM_MEAS_TX;
+	payloadTx.gatewayID = GATEWAYID;
+	payloadTx.status = true;
+	isArmed = true;
 
 	led.Strobe(5,50);
 
@@ -122,16 +126,26 @@ void setup()
 void loop()
 {
 	currTime = millis();
-	if (currTime - prevTime > RX_PERIOD){
+	if (currTime - prevTime > CHECKIN_PERIOD){
 		prevTime = currTime;
 		delay(10);
-		DEBUGln("Listening...");
+		DEBUGln("Checking in...");
 		delay(10);
-		if (radio.receiveDone()){
-			DEBUGln("Doing what I'm told.");
+		payloadTx.msgType = PF_MSG_STATUS;
+		if (radio.sendWithRetry(GATEWAYID, (const void*)(&payloadTx), payloadTx.payloadSize)){
+			delay(10);
+			payloadRx = *(Payload*)radio.DATA;
+			isArmed = payloadRx.status;
+			DEBUGln(F("ACK:OK"));
+			DEBUG("Status: ");
+			DEBUGln(payloadRx.status);
+		}
+		else{
+			DEBUGln("ACK:BAD");
 		}
 	}
-	if (motionInterruptCaught|sleepInterruptCaught){
+
+	if (isArmed & ( motionInterruptCaught | sleepInterruptCaught )){
 		intSource = accelerometer.getInterruptSources();
 		DEBUGln(F("Interrupt Sources:"));
 		if (intSource & 0x01)DEBUGln(F("SRC_DRDY"));
@@ -149,7 +163,7 @@ void loop()
 					+ data.scaled.y*data.scaled.y
 					+ data.scaled.z*data.scaled.z;
 				measNum++;
-				payloadTx.msgType = PF_MSG_DATA;
+				payloadTx.msgType = PF_MSG_ACCEL_DATA;
 			}
 		}
 		for (byte i = 0; i < NUM_MEAS_TX; i++){
@@ -159,7 +173,11 @@ void loop()
 		
 		if (radio.sendWithRetry(GATEWAYID, (const void*)(&payloadTx), payloadTx.payloadSize)){
 			delay(10);
+			payloadRx = *(Payload*)radio.DATA;
+			isArmed = payloadRx.status;
 			DEBUGln(F("ACK:OK"));
+			DEBUG("Status: ");
+			DEBUGln(payloadRx.status);
 		}
 		else{
 			DEBUGln("ACK:BAD");

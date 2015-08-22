@@ -24,7 +24,7 @@ typedef struct{
 }PiFortEEPROM;
 
 enum PiFortNodeType {PF_GATEWAY,PF_NEEDS_A_NAME,PF_INTRUSION_NODE}; // Possible device types: PF_INTRUSION_NODE (accelerometer)
-enum PiFortMessageType { PF_MSG_DATA, PF_MSG_NEW_NODE_INFO, PF_MSG_NEW_GATEWAY_INFO, PF_MSG_STATUS };
+enum PiFortMessageType { PF_MSG_ACCEL_DATA, PF_MSG_NEW_NODE_INFO, PF_MSG_NEW_GATEWAY_INFO, PF_MSG_STATUS };
 
 class Payload{
 public:
@@ -32,9 +32,11 @@ public:
 		payloadSize = sizeof(Payload) - (MAX_PAYLOAD_DATA_SIZE - dataArraySize)*sizeof(float);
 	}
 	byte payloadSize;					// size of payload in bytes
+	bool status;						// True (armed), False (standby)
 	PiFortMessageType msgType;			// enum describing message type
 	byte numNodes;						// Number of nodes on network
 	byte nodeID;						// Unique ID for each node on network
+	byte gatewayID;						// Gateway ID
 	PiFortNodeType nodeType;			// Device type
 	byte numMeas;						// Number of data points to send
 	byte currMeas;						// Position in data array of most current meas (used for circular buffer)

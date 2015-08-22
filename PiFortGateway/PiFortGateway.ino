@@ -19,7 +19,7 @@
 #define ENCRYPTKEY    "sampleEncryptKey" //exactly the same 16 characters/bytes on all nodes!
 //#define IS_RFM69HW    //uncomment only for RFM69HW! Leave out if you have RFM69W!
 #define ACK_TIME      30 // max # of ms to wait for an ack
-#define SERIAL_BAUD   115200
+#define SERIAL_BAUD   19200
 
 //#define SERIAL_EN
 #ifdef SERIAL_EN
@@ -71,6 +71,8 @@ void setup() {
 	}
 
 	payloadTx.numNodes = eeprom.numNodes;
+	payloadTx.gatewayID = GATEWAYID;
+	payloadTx.status = true;
 
 	DEBUGln(F("EEPROM Contents:"));
 	byte eepromValue;
@@ -96,6 +98,8 @@ void setup() {
 	radio.encrypt(ENCRYPTKEY);
 	radio.promiscuous(promiscuousMode);
 
+	Serial.flush();
+
 	DEBUGln(F("End Setup!"));
 }
 
@@ -115,6 +119,33 @@ void loop() {
 	ApplicationMonitor.SetData(g_nIterations++);
 	DEBUGln(F("Watchdog Fed..."));
 
+	if (Serial.available()){
+		Serial.println("Received Serial Command!");
+		String serialString = "";
+		while (Serial.available()){
+			char newChar = Serial.read();
+			Serial.print("newChar: ");
+			Serial.println((int)newChar);
+			Serial.print("\\n:");
+			Serial.println(int('\n'));
+			if (newChar == '\n'){
+				Serial.println("New Line");
+				serialString.toLowerCase();
+				Serial.println(serialString);
+				if (serialString == "arm"){
+					payloadTx.status = true;
+				}
+				if (serialString == "disarm"){
+					payloadTx.status = false;
+				}
+				serialString = "";
+			}
+			else{
+				serialString += newChar;
+			}
+		}
+	}
+
 	//check for any received packets
 	DEBUGln(F("Checking radio RX..."));
 	if (radio.receiveDone())
@@ -132,6 +163,7 @@ void loop() {
 
 		if (payloadRx.numNodes > eeprom.numNodes){
 			eeprom.numNodes = payloadRx.numNodes;
+			payloadTx.numNodes = payloadRx.numNodes;
 			EEPROM.put(0, eeprom);
 		}
 
@@ -142,10 +174,9 @@ void loop() {
 			eeprom.numNodes += 1;
 			payloadTx.nodeID = eeprom.numNodes;
 			EEPROM.put(0, eeprom);
-			radio.sendACK((const void*)(&payloadTx), payloadTx.payloadSize);
 		}
 
-		if (payloadRx.msgType == PF_MSG_DATA){
+		if (payloadRx.msgType == PF_MSG_ACCEL_DATA){
 			Serial.println(F("   Data: "));
 			for (byte i = 0; i < payloadRx.numMeas; i++){
 				Serial.print(payloadRx.data[i]);
@@ -153,20 +184,14 @@ void loop() {
 			}
 		}
 
+		radio.sendACK((const void*)(&payloadTx), payloadTx.payloadSize);
+
 		if (promiscuousMode)
 		{
 		  DEBUG("Target ID: ");
 		  DEBUGln(radio.TARGETID);
 		}
 
-		DEBUGln(F("Checking ACK Request..."));
-		if (radio.ACKRequested())
-		{
-		  byte theNodeID = radio.SENDERID;
-		  radio.sendACK();
-		  DEBUG(F(" - ACK sent."));
-		}
-		DEBUGln();
 	}
 	DEBUGln(F("End loop!"));
 }
