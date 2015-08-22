@@ -10,7 +10,7 @@
 #include <RFM69.h>    //get it here: https://www.github.com/lowpowerlab/rfm69
 #include <SPI.h>
 
-#define NODEID        1    //unique for each node on same network
+#define GATEWAYID        1    //unique for each node on same network
 #define NETWORKID     100  //the same on all nodes that talk to each other
 //Match frequency to the hardware version of the radio on your Moteino (uncomment one):
 //#define FREQUENCY     RF69_433MHZ
@@ -41,17 +41,45 @@
 
 unsigned long prevLoopTime=0;
 
-Payload payload(MAXNUMMEAS);
-char payLoadChar[sizeof(payload)];
+Payload payloadRx(MAXNUMMEAS);
+Payload payloadTx(MAXNUMMEAS);
+char payLoadChar[sizeof(payloadRx)];
 
 RFM69 radio;
 bool promiscuousMode = false; //set to 'true' to sniff all packets on the same network
 
 Watchdog::CApplicationMonitor ApplicationMonitor;
 int g_nIterations=0;
+PiFortEEPROM eeprom;
 
 void setup() {
 	Serial.begin(SERIAL_BAUD);
+
+	// Read EEPROM
+	EEPROM.get(0, eeprom);
+	Serial.println("EEPROM: ");
+	Serial.print("GATEWAY ID: "); Serial.println(eeprom.gateWayID);
+	Serial.print("NETWORK ID: "); Serial.println(eeprom.networkID);
+	Serial.print("NODE ID: "); Serial.println(eeprom.nodeID);
+	Serial.print("NUM NODES: "); Serial.println(eeprom.numNodes);
+	if (eeprom.gateWayID == 255){
+		Serial.println("EEPROM Not Set");
+		eeprom.gateWayID = 1;
+		eeprom.networkID = NETWORKID;
+		eeprom.numNodes = 1;
+		EEPROM.put(0, eeprom);
+	}
+
+	payloadTx.numNodes = eeprom.numNodes;
+
+	DEBUGln(F("EEPROM Contents:"));
+	byte eepromValue;
+	for (int i = 0; i<512; i++){
+		eepromValue = EEPROM.read(i);
+		DEBUG(eepromValue);
+		DEBUG(F(" "));
+		delay(10);
+	}
   
 	// Enable Watchdog Timer
 	DEBUGln(F("Initializing Watchdog..."));
@@ -61,21 +89,12 @@ void setup() {
 
 	DEBUGln(F("Initializing Radio..."));
 	delay(10);
-	radio.initialize(FREQUENCY,NODEID,NETWORKID);
+	radio.initialize(FREQUENCY,GATEWAYID,NETWORKID);
 #ifdef IS_RFM69HW
 	radio.setHighPower(); //only for RFM69HW!
 #endif
 	radio.encrypt(ENCRYPTKEY);
 	radio.promiscuous(promiscuousMode);
-	
-	DEBUGln(F("EEPROM Contents:"));
-	byte eepromValue;
-	for(int i=0;i<512;i++){
-		eepromValue = EEPROM.read(i);
-		DEBUG(eepromValue);
-		DEBUG(F(" "));
-		delay(10);
-	}
 
 	DEBUGln(F("End Setup!"));
 }
@@ -103,25 +122,37 @@ void loop() {
 		Serial.print(F("Packet Count: "));
 		Serial.println(++packetCount);
 		Serial.print(F("   Sender ID: "));
-		Serial.print(radio.SENDERID, DEC);
+		Serial.println(radio.SENDERID, DEC);
 		Serial.print(F("   RX_RSSI: "));
-		Serial.print(radio.RSSI);
+		Serial.println(radio.RSSI);
 		Serial.print(F("   Data Length: "));
-		Serial.print(radio.DATALEN);
+		Serial.println(radio.DATALEN);
     	
-		payload = *(Payload*)radio.DATA;
-		memcpy(&payLoadChar, &payload, sizeof(Payload));
-		payload = *(Payload*)&payLoadChar;
+		payloadRx = *(Payload*)radio.DATA;
 
-		Serial.println(F("   Data: "));
-		for (byte i = 0; i < payload.numMeas; i++){
-			Serial.print(payload.data[i]);
-			Serial.print(" ");
+		if (payloadRx.numNodes > eeprom.numNodes){
+			eeprom.numNodes = payloadRx.numNodes;
+			EEPROM.put(0, eeprom);
 		}
-		Serial.println("");
-		Serial.println("");
-		Serial.println(payLoadChar);
-		
+
+		if (payloadRx.nodeID == PF_NEEDS_A_NAME){
+			Serial.println("This guy needs a name!");
+			payloadTx.msgType = PF_MSG_NEW_NODE_INFO;
+			EEPROM.get(0, eeprom);
+			eeprom.numNodes += 1;
+			payloadTx.nodeID = eeprom.numNodes;
+			EEPROM.put(0, eeprom);
+			radio.sendACK((const void*)(&payloadTx), payloadTx.payloadSize);
+		}
+
+		if (payloadRx.msgType == PF_MSG_DATA){
+			Serial.println(F("   Data: "));
+			for (byte i = 0; i < payloadRx.numMeas; i++){
+				Serial.print(payloadRx.data[i]);
+				Serial.print(" ");
+			}
+		}
+
 		if (promiscuousMode)
 		{
 		  DEBUG("Target ID: ");

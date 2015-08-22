@@ -16,14 +16,24 @@ Distributed as-is; no warranty is given.
 
 #define MAX_PAYLOAD_DATA_SIZE		50
 
-enum PiFortNodeType {PF_INTRUSION_NODE}; // Possible device types: PF_INTRUSION_NODE (accelerometer)
+typedef struct{
+	byte nodeID;
+	byte gateWayID;
+	byte networkID;
+	byte numNodes;
+}PiFortEEPROM;
+
+enum PiFortNodeType {PF_GATEWAY,PF_NEEDS_A_NAME,PF_INTRUSION_NODE}; // Possible device types: PF_INTRUSION_NODE (accelerometer)
+enum PiFortMessageType { PF_MSG_DATA, PF_MSG_NEW_NODE_INFO, PF_MSG_NEW_GATEWAY_INFO, PF_MSG_STATUS };
 
 class Payload{
 public:
 	Payload(byte dataArraySize){
 		payloadSize = sizeof(Payload) - (MAX_PAYLOAD_DATA_SIZE - dataArraySize)*sizeof(float);
 	}
-	byte payloadSize;
+	byte payloadSize;					// size of payload in bytes
+	PiFortMessageType msgType;			// enum describing message type
+	byte numNodes;						// Number of nodes on network
 	byte nodeID;						// Unique ID for each node on network
 	PiFortNodeType nodeType;			// Device type
 	byte numMeas;						// Number of data points to send
