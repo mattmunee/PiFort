@@ -10,8 +10,8 @@
 #define SERIAL_BAUD      19200
 #define SERIAL_EN
 #ifdef SERIAL_EN
-#define DEBUG(input)   {Serial.print(input); delay(15);}
-#define DEBUGln(input) {Serial.println(input); delay(15);}
+#define DEBUG(input)   {int ms=10;delay(ms);Serial.print(input); delay(ms);}
+#define DEBUGln(input) {int ms=10;delay(ms);Serial.println(input); delay(ms);}
 #else
 #define DEBUG(input);
 #define DEBUGln(input);
@@ -21,14 +21,15 @@
 #define NETWORKID		100  //the same on all nodes that talk to each other
 #define GATEWAYID		1
 #define FREQUENCY		RF69_915MHZ
-#define ENCRYPTKEY		"sampleEncryptKey" //exactly the same 16 characters/bytes on all nodes!
+#define ENCRYPTKEY		"sampleEncryptKey" //exactly the same 16 characters/bytes on all nodes! 
 #define NUM_MEAS_TX		10
-#define CHECKIN_PERIOD		5000 //300000 //5 minute intervals
+#define CHECKIN_PERIOD		5000 //300000 //5 minute intervals 
 
 RFM69 radio;
 MMA8452Q accelerometer;
 Payload payloadTx(NUM_MEAS_TX);
 Payload payloadRx(NUM_MEAS_TX);
+
 
 ArduinoLED led(LED);
 
@@ -64,9 +65,16 @@ void setup()
 		radio.encrypt(ENCRYPTKEY);
 		payloadTx.nodeID = PF_NEEDS_A_NAME;
 		while (!setupSuccessful){
+			payloadTx.updateChecksum();
 			if (radio.sendWithRetry(GATEWAYID, (const void*)(&payloadTx), payloadTx.payloadSize)){
 				DEBUGln("Response from Gateway!");
 				payloadRx = *(Payload*)radio.DATA;
+				if (payloadRx.validateChecksum()){
+					Serial.println("CHECKSUM: OK");
+				}
+				else{
+					Serial.println("CHECKSUM: BAD");
+				}
 				if (payloadRx.msgType == PF_MSG_NEW_NODE_INFO){
 					DEBUGln("Received Setup Info.");
 					DEBUG("New Node ID: ");
@@ -128,13 +136,17 @@ void loop()
 	currTime = millis();
 	if (currTime - prevTime > CHECKIN_PERIOD){
 		prevTime = currTime;
-		delay(10);
 		DEBUGln("Checking in...");
-		delay(10);
 		payloadTx.msgType = PF_MSG_STATUS;
+		payloadTx.updateChecksum();
 		if (radio.sendWithRetry(GATEWAYID, (const void*)(&payloadTx), payloadTx.payloadSize)){
-			delay(10);
 			payloadRx = *(Payload*)radio.DATA;
+			if (payloadRx.validateChecksum()){
+				Serial.println("CHECKSUM: OK");
+			}
+			else{
+				Serial.println("CHECKSUM: BAD");
+			}
 			isArmed = payloadRx.status;
 			DEBUGln(F("ACK:OK"));
 			DEBUG("Status: ");
@@ -171,8 +183,8 @@ void loop()
 			DEBUG(" ");
 		}
 		
+		payloadTx.updateChecksum();
 		if (radio.sendWithRetry(GATEWAYID, (const void*)(&payloadTx), payloadTx.payloadSize)){
-			delay(10);
 			payloadRx = *(Payload*)radio.DATA;
 			isArmed = payloadRx.status;
 			DEBUGln(F("ACK:OK"));
@@ -182,7 +194,7 @@ void loop()
 		else{
 			DEBUGln("ACK:BAD");
 		}
-		delay(10);
+
 		accelerometer.clearAllInterrupts();
 
 		motionInterruptCaught = false;

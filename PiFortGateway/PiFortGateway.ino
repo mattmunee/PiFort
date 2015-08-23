@@ -37,13 +37,13 @@
 	#define LED           9 // Moteinos have LEDs on D9
 	#define FLASH_SS      8 // and FLASH SS on D8
 #endif
-#define MAXNUMMEAS    100
 
-unsigned long prevLoopTime=0;
+#define MAXNUMMEAS    100 
+
+unsigned long prevLoopTime = 0;
 
 Payload payloadRx(MAXNUMMEAS);
 Payload payloadTx(MAXNUMMEAS);
-char payLoadChar[sizeof(payloadRx)];
 
 RFM69 radio;
 bool promiscuousMode = false; //set to 'true' to sniff all packets on the same network
@@ -73,6 +73,8 @@ void setup() {
 	payloadTx.numNodes = eeprom.numNodes;
 	payloadTx.gatewayID = GATEWAYID;
 	payloadTx.status = true;
+
+	Serial.print("Payload Size: "); Serial.println(payloadRx.payloadSize);
 
 	DEBUGln(F("EEPROM Contents:"));
 	byte eepromValue;
@@ -160,6 +162,13 @@ void loop() {
 		Serial.println(radio.DATALEN);
     	
 		payloadRx = *(Payload*)radio.DATA;
+		if (payloadRx.validateChecksum()){
+			Serial.print(payloadRx.crc);
+			Serial.println(" CHECKSUM: OK");
+		}
+		else{
+			Serial.println("CHECKSUM: BAD");
+		}
 
 		if (payloadRx.numNodes > eeprom.numNodes){
 			eeprom.numNodes = payloadRx.numNodes;
@@ -184,6 +193,7 @@ void loop() {
 			}
 		}
 
+		payloadTx.updateChecksum();
 		radio.sendACK((const void*)(&payloadTx), payloadTx.payloadSize);
 
 		if (promiscuousMode)
