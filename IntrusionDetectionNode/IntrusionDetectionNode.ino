@@ -157,48 +157,52 @@ void loop()
 		}
 	}
 
-	if (isArmed & ( motionInterruptCaught | sleepInterruptCaught )){
-		intSource = accelerometer.getInterruptSources();
-		DEBUGln(F("Interrupt Sources:"));
-		if (intSource & 0x01)DEBUGln(F("SRC_DRDY"));
-		if (intSource & 0x04)DEBUGln(F("SRC_FF_MT"));
-		if (intSource & 0x08)DEBUGln(F("SRC_PULSE"));
-		if (intSource & 0x10)DEBUGln(F("SRC_LNDPRT"));
-		if (intSource & 0x20)DEBUGln(F("SRC_TRANS"));
-		if (intSource & 0x80)DEBUGln(F("SRC_ASLP"));
+	if (motionInterruptCaught | sleepInterruptCaught){
+		if (isArmed & motionInterruptCaught){
+			if (motionInterruptCaught)DEBUGln("MOTION");
+			if (sleepInterruptCaught)DEBUGln("SLEEP");
+			intSource = accelerometer.getInterruptSources();
+			DEBUGln(F("Interrupt Sources:"));
+			if (intSource & 0x01)DEBUGln(F("SRC_DRDY"));
+			if (intSource & 0x04)DEBUGln(F("SRC_FF_MT"));
+			if (intSource & 0x08)DEBUGln(F("SRC_PULSE"));
+			if (intSource & 0x10)DEBUGln(F("SRC_LNDPRT"));
+			if (intSource & 0x20)DEBUGln(F("SRC_TRANS"));
+			if (intSource & 0x80)DEBUGln(F("SRC_ASLP"));
 
-		byte measNum = 0;
-		while (measNum < NUM_MEAS_TX){
-			if (accelerometer.available()){
-				data=accelerometer.getData();
-				payloadTx.data[measNum] = data.scaled.x*data.scaled.x
-					+ data.scaled.y*data.scaled.y
-					+ data.scaled.z*data.scaled.z;
-				measNum++;
-				payloadTx.msgType = PF_MSG_ACCEL_DATA;
+			byte measNum = 0;
+			while (measNum < NUM_MEAS_TX){
+				if (accelerometer.available()){
+					data = accelerometer.getData();
+					payloadTx.data[measNum] = data.scaled.x*data.scaled.x
+						+ data.scaled.y*data.scaled.y
+						+ data.scaled.z*data.scaled.z;
+					measNum++;
+					payloadTx.msgType = PF_MSG_ACCEL_DATA;
+				}
 			}
-		}
-		for (byte i = 0; i < NUM_MEAS_TX; i++){
-			DEBUG(payloadTx.data[i]);
-			DEBUG(" ");
-		}
-		
-		payloadTx.updateChecksum();
-		if (radio.sendWithRetry(GATEWAYID, (const void*)(&payloadTx), payloadTx.payloadSize)){
-			payloadRx = *(Payload*)radio.DATA;
-			isArmed = payloadRx.status;
-			DEBUGln(F("ACK:OK"));
-			DEBUG("Status: ");
-			DEBUGln(payloadRx.status);
-		}
-		else{
-			DEBUGln("ACK:BAD");
-		}
+			for (byte i = 0; i < NUM_MEAS_TX; i++){
+				DEBUG(payloadTx.data[i]);
+				DEBUG(" ");
+			}
 
-		accelerometer.clearAllInterrupts();
+			payloadTx.updateChecksum();
+			if (radio.sendWithRetry(GATEWAYID, (const void*)(&payloadTx), payloadTx.payloadSize)){
+				payloadRx = *(Payload*)radio.DATA;
+				isArmed = payloadRx.status;
+				DEBUGln(F("ACK:OK"));
+				DEBUG("Status: ");
+				DEBUGln(payloadRx.status);
+			}
+			else{
+				DEBUGln("ACK:BAD");
+			}
+
+		}
 
 		motionInterruptCaught = false;
 		sleepInterruptCaught = false;
+		accelerometer.clearAllInterrupts();
 	}
 	else{
 		LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);
