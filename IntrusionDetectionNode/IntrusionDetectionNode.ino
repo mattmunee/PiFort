@@ -133,6 +133,11 @@ void setup()
 
 void loop()
 {
+	if (accelerometer.isActive()&!isArmed)
+		accelerometer.standby();
+	if (isArmed&!accelerometer.isActive())
+		accelerometer.active();
+
 	currTime = millis();
 	if (currTime - prevTime > CHECKIN_PERIOD){
 		prevTime = currTime;
