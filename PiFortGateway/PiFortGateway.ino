@@ -165,6 +165,8 @@ void loop() {
 		if (payloadRx.validateChecksum()){
 			Serial.print(payloadRx.crc);
 			Serial.println(" CHECKSUM: OK");
+			Serial.print("Battery Voltage: ");
+			Serial.println(payloadRx.batteryVoltage);
 		}
 		else{
 			Serial.println("CHECKSUM: BAD");

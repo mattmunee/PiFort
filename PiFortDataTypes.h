@@ -49,17 +49,19 @@ public:
 		return temp.crc == crcRx;
 	}
 	
-	unsigned char crc;					// checksum
-	unsigned char payloadSize;			// size of payload in bytes
-	bool status;						// True (armed), False (standby)
-	PiFortMessageType msgType;			// enum describing message type
-	unsigned char numNodes;				// Number of nodes on network
-	unsigned char nodeID;				// Unique ID for each node on network
-	unsigned char gatewayID;			// Gateway ID
-	PiFortNodeType nodeType;			// Device type
-	unsigned char numMeas;				// Number of data points to send
-	unsigned char currMeas;				// Position in data array of most current meas (used for circular buffer)
-	float data[MAX_PAYLOAD_DATA_SIZE];	// Fixed size data array
+	unsigned char		crc;							// checksum
+	unsigned char		payloadSize;					// size of payload in bytes
+	bool				status;							// True (armed), False (standby)
+	PiFortMessageType	msgType;						// enum describing message type
+	unsigned char		numNodes;						// Number of nodes on network
+	unsigned char		nodeID;							// Unique ID for each node on network
+	unsigned char		gatewayID;						// Gateway ID
+	PiFortNodeType		nodeType;						// Device type
+	unsigned long		time;							// Generic time
+	float				batteryVoltage;					// Voltage measurement
+	unsigned char		numMeas;						// Number of data points to send
+	unsigned char		currMeas;						// Position in data array of most current meas (used for circular buffer)
+	float				data[MAX_PAYLOAD_DATA_SIZE];	// Fixed size data array
 };
 
 #endif //PIFORTDATATYPES_H

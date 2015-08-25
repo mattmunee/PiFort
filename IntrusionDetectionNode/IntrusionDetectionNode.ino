@@ -23,12 +23,17 @@
 #define FREQUENCY		RF69_915MHZ
 #define ENCRYPTKEY		"sampleEncryptKey" //exactly the same 16 characters/bytes on all nodes! 
 #define NUM_MEAS_TX		10
-#define CHECKIN_PERIOD		5000 //300000 //5 minute intervals 
+#define CHECKIN_PERIOD	5000 //300000 //5 minute intervals 
+#define BATT_PIN		A1
+#define VOLT_SCALE		1.70213			//Voltage divider scaling =(R1+R2)/R2 (where R2 is lower resistor)
+#define AREF			3.3				//Reference voltage (3.3V for Moteino)
+#define ANLG_SCALE		0.00097751711	//=1/1023
 
 RFM69 radio;
 MMA8452Q accelerometer;
 Payload payloadTx(NUM_MEAS_TX);
 Payload payloadRx(NUM_MEAS_TX);
+float battScaleFactor = AREF*VOLT_SCALE*ANLG_SCALE;
 
 
 ArduinoLED led(LED);
@@ -142,6 +147,9 @@ void loop()
 	if (currTime - prevTime > CHECKIN_PERIOD){
 		prevTime = currTime;
 		DEBUGln("Checking in...");
+		payloadTx.batteryVoltage = battScaleFactor*analogRead(BATT_PIN);
+		DEBUG("Battery Voltage: ");
+		DEBUGln(payloadTx.batteryVoltage);
 		payloadTx.msgType = PF_MSG_STATUS;
 		payloadTx.updateChecksum();
 		if (radio.sendWithRetry(GATEWAYID, (const void*)(&payloadTx), payloadTx.payloadSize)){
